@@ -5,7 +5,7 @@ import { TaskForm } from '@/components/tasks/TaskForm';
 import { fetchProject } from '@/lib/api/projects';
 import { createClient } from '@/lib/supabase/server';
 
-import { Board } from './Board';
+import { Board } from './[id]/Board';
 
 /**
  * In Next.js 15 `params` is a PROMISE. In Next 14 it was a plain object.
