@@ -43,7 +43,7 @@ means you'll spend the session watching other people build.
 
 ```bash
 node -v
-```
+
 
 You need **v20 or higher**. Older? Install the current LTS from
 <https://nodejs.org>.
@@ -487,7 +487,7 @@ swap Supabase for your own Express API later by rewriting a single folder.
 1. **Ship it properly** — a README with a screenshot and the live link, pinned
    on your GitHub profile.
 2. **Optimistic delete** — `useDeleteTask` is written the simple way. Give it
-   the same treatment as TODO 7.
+   the same treatment as TODO 7. 
 3. **Edit a task** — reuse `TaskForm` for both create and edit. Hint: an
    optional `task` prop feeding `defaultValues`.
 4. **Create projects** — right now a trigger makes your first board. Build the

@@ -1,54 +1,70 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 
-import { EmptyState } from '@/components/ui';
-import { fetchProjects } from '@/lib/api/projects';
+import { TaskForm } from '@/components/tasks/TaskForm';
+import { fetchProject } from '@/lib/api/projects';
 import { createClient } from '@/lib/supabase/server';
 
+import { Board } from './Board';
+
 /**
- * /projects — a SERVER COMPONENT.
+ * In Next.js 15 `params` is a PROMISE. In Next 14 it was a plain object.
  *
- * Look at what is missing: no 'use client', no useEffect, no useState, no
- * loading flag. It is an async function that runs on the server, talks to the
- * database, and sends finished HTML down the wire.
- *
- * Three consequences:
- *   1. The page has content before React has even loaded in the browser.
- *   2. This code is not in your JS bundle — the browser downloads less.
- *   3. It runs closer to the database, so the query is fast.
- *
- * THE RULE: server by default. Add 'use client' only when you need a hook, an
- * event handler, or a browser API — and push it as deep into the tree as you
- * can. Every 'use client' is a decision to ship more JavaScript.
+ * Copy a tutorial written in 2024 and you get `params.id is undefined`. Half
+ * the Next.js answers online are still for the old version — always check.
  */
-export default async function ProjectsPage() {
+type PageProps = { params: Promise<{ id: string }> };
+
+/**
+ * TODO 9 — runs on the server before the page renders, and its result becomes
+ * real <title> and <meta> tags in the HTML.
+ *
+ * That is what Google and WhatsApp link previews read. A client-side SPA
+ * cannot do this without extra machinery.
+ */
+export async function generateMetadata({ params }: PageProps) {
+  const { id } = await params;
+
   const supabase = await createClient();
-  const projects = await fetchProjects(supabase);
+  const project = await fetchProject(supabase, id);
+
+  return { title: project?.name ?? 'Project' };
+}
+
+export default async function ProjectPage({ params }: PageProps) {
+  const { id } = await params;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const project = await fetchProject(supabase, id);
+
+  // Null means either "no such project" or "RLS said no". Both are a 404 as
+  // far as the visitor is concerned — never leak the difference, or you have
+  // told an attacker that the id exists.
+  if (!project || !user) notFound();
 
   return (
-    <>
-      <div className="page-head">
-        <h1>Your projects</h1>
-        <p>Every board below is yours alone — Row Level Security guarantees it.</p>
+    <div className="stack">
+      <div>
+        <Link href="/projects" className="crumb">
+          ← All projects
+        </Link>
+        <div className="page-head">
+          <h1>{project.name}</h1>
+          {project.description && <p>{project.description}</p>}
+        </div>
       </div>
 
-      {projects.length === 0 ? (
-        <EmptyState
-          title="No projects yet"
-          description="Sign up creates a starter board automatically. If you are seeing this, check your database trigger."
-        />
-      ) : (
-        <div className="grid">
-          {projects.map((project) => (
-            <Link key={project.id} href={`/projects/${project.id}`} className="project-card">
-              <h3>{project.name}</h3>
-              <p>{project.description ?? 'No description.'}</p>
-              <div className="project-card__meta">
-                {new Date(project.created_at).toISOString().slice(0, 10)}
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-    </>
+      {/*
+        The page is a server component; only these two children are client
+        components. The data for the board is fetched in the browser by
+        TanStack Query so that it can be cached, refetched and mutated.
+      */}
+      <TaskForm projectId={project.id} userId={user.id} />
+      <Board projectId={project.id} />
+    </div>
   );
 }
